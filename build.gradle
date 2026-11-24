@@ -1,0 +1,22 @@
+buildscript {
+    repositories {
+        google()
+        mavenCentral() // Заменить устаревший jcenter(), так как он больше не поддерживается
+    }
+    dependencies {
+        // Обновленная версия плагина Gradle
+        classpath 'com.android.tools.build:gradle:8.1.0'
+    }
+}
+
+allprojects {
+    repositories {
+        google()
+        mavenCentral() // Заменить jcenter()
+        maven { url 'https://jitpack.io' }
+    }
+}
+
+task clean(type: Delete) {
+    delete rootProject.buildDir
+}

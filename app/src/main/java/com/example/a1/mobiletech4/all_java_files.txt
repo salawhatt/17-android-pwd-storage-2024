@@ -1,0 +1,2214 @@
+// ========== ChangingEntryActivity.java ========== //
+
+package com.example.a1.mobiletech4;
+import android.content.ClipData;
+import android.content.ClipboardManager;
+import android.content.Intent;
+import android.os.Bundle;
+import android.text.method.HideReturnsTransformationMethod;
+import android.text.method.PasswordTransformationMethod;
+import android.view.View;
+import android.widget.Button;
+import android.widget.CheckBox;
+import android.widget.CompoundButton;
+import android.widget.EditText;
+import androidx.appcompat.app.AppCompatActivity;
+import com.google.android.material.snackbar.Snackbar;
+
+public class ChangingEntryActivity extends AppCompatActivity {
+    EditText resourceText;
+    EditText loginText;
+    EditText passwordText;
+    EditText noteText;
+
+    String checkedResource;
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_changing_entry);
+
+        Bundle arguments = getIntent().getExtras();
+        checkedResource = arguments.get("checked_resource").toString();
+
+        resourceText = findViewById(R.id.resourceText);
+        loginText = findViewById(R.id.loginText);
+        passwordText = findViewById(R.id.passwordText);
+        noteText = findViewById(R.id.noteText);
+
+        passwordText.setTransformationMethod(PasswordTransformationMethod.getInstance());
+
+        resourceText.setText(checkedResource);
+
+        Db database = new Db(this);
+        database.setKey(PreferencesSettings.getCurrentCode(this).substring(0, 32));
+
+        loginText.setText(database.getItemInfoByResourceName(checkedResource, DbHelper.KEY_LOGIN));
+        passwordText.setText(database.getItemInfoByResourceName(checkedResource, DbHelper.KEY_PASSWORD));
+        noteText.setText(database.getItemInfoByResourceName(checkedResource, DbHelper.KEY_NOTE));
+        database.close();
+
+        CheckBox checkBox = findViewById(R.id.checkBox);
+        checkBox.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                if (isChecked) {
+                    passwordText.setTransformationMethod(PasswordTransformationMethod.getInstance());
+                }
+                else {
+                    passwordText.setTransformationMethod(HideReturnsTransformationMethod.getInstance());
+                }
+            }
+        });
+        Button cancelButton = findViewById(R.id.cancelButton2);
+        cancelButton.setOnClickListener(new View.OnClickListener()
+        {
+            @Override
+            public void onClick(View v) {
+                startWorkActivity();
+            }
+        });
+        Button copePassButton = findViewById(R.id.copyPassBtn);
+        copePassButton.setOnClickListener(new View.OnClickListener()
+        {
+            @Override
+            public void onClick(View v) {
+                //passwordText.setTransformationMethod(HideReturnsTransformationMethod.getInstance());
+                String srcText = passwordText.getText().toString();
+                //passwordText.setTransformationMethod(PasswordTransformationMethod.getInstance());
+                Object clipboardService = getSystemService(CLIPBOARD_SERVICE);
+                final ClipboardManager clipboardManager = (ClipboardManager)clipboardService;
+                // Create a new ClipData.
+                ClipData clipData = ClipData.newPlainText("Source Text", srcText);
+                // Set it as primary clip data to copy text to system clipboard.
+                clipboardManager.setPrimaryClip(clipData);
+                // Popup a snackbar.
+                Snackbar snackbar = Snackbar.make(v, "Source text has been copied to system clipboard.", Snackbar.LENGTH_LONG);
+                snackbar.show();
+            }
+        });
+
+
+        Button saveButton = findViewById(R.id.saveButton);
+        saveButton.setOnClickListener(new View.OnClickListener()
+        {
+            @Override
+            public void onClick(View v) {
+                String resource = ((EditText)findViewById(R.id.resourceText)).getText().toString();
+                String login = ((EditText)findViewById(R.id.loginText)).getText().toString();
+                String password = ((EditText)findViewById(R.id.passwordText)).getText().toString();
+                String note = ((EditText)findViewById(R.id.noteText)).getText().toString();
+                updateFields(resource, login, password, note);
+                startWorkActivity();
+            }
+        });
+    }
+
+    void updateFields(String resource, String login, String password, String note)
+    {
+        Db database = new Db(this);
+        database.setKey(PreferencesSettings.getCurrentCode(this).substring(0, 32));
+        database.updateLogin(checkedResource, login);
+        database.updatePassword(checkedResource, password);
+        database.updateNote(checkedResource, note);
+        database.updateResource(checkedResource, resource);
+        database.close();
+    }
+
+    void startWorkActivity()
+    {
+        Intent intent = new Intent(this, WorkActivity.class);
+        finish();
+        intent.putExtra("password", "not_changed");
+        startActivity(intent);
+    }
+}
+
+
+// ============================= //
+
+// ========== CreatePassActivity.java ========== //
+
+package com.example.a1.mobiletech4;
+
+import android.content.Intent;
+import android.os.Bundle;
+import android.text.method.HideReturnsTransformationMethod;
+import android.text.method.PasswordTransformationMethod;
+import android.view.View;
+import android.widget.Button;
+import android.widget.CheckBox;
+import android.widget.CompoundButton;
+import android.widget.EditText;
+
+import androidx.appcompat.app.AppCompatActivity;
+
+public class CreatePassActivity extends AppCompatActivity {
+
+    EditText passwordText;
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_create_pass);
+
+        passwordText = findViewById(R.id.createPassEnterPass);
+        passwordText.setTransformationMethod(PasswordTransformationMethod.getInstance());
+
+
+        CheckBox checkBox = findViewById(R.id.createPassTick);
+        checkBox.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                if (isChecked) {
+                    passwordText.setTransformationMethod(PasswordTransformationMethod.getInstance());
+                }
+                else {
+                    passwordText.setTransformationMethod(HideReturnsTransformationMethod.getInstance());
+                }
+            }
+        });
+
+        Button acceptButton = findViewById(R.id.createPassBtn);
+        acceptButton.setOnClickListener(new View.OnClickListener()
+        {
+            @Override
+            public void onClick(View v) {
+                savePass(passwordText.getText().toString());
+                startMainActivity();
+            }
+        });
+    }
+
+    void savePass(String pass) {
+        PreferencesSettings.saveToPref(this, PreferencesSettings.md5(pass));
+    }
+
+    void startMainActivity() {
+        Intent intent = new Intent(this, MainActivity.class);
+        finish();
+        startActivity(intent);
+    }
+}
+
+
+// ============================= //
+
+// ========== CreatingEntryActivity.java ========== //
+
+package com.example.a1.mobiletech4;
+
+import android.content.ClipData;
+import android.content.ClipboardManager;
+import android.content.Intent;
+import android.os.Bundle;
+import android.text.method.HideReturnsTransformationMethod;
+import android.text.method.PasswordTransformationMethod;
+import android.view.View;
+import android.widget.Button;
+import android.widget.CheckBox;
+import android.widget.CompoundButton;
+import android.widget.EditText;
+import android.widget.Toast;
+
+import androidx.appcompat.app.AppCompatActivity;
+
+import com.google.android.material.snackbar.Snackbar;
+
+public class CreatingEntryActivity extends AppCompatActivity {
+
+    Db database;
+
+    EditText resourceText;
+    EditText loginText;
+    EditText passwordText;
+    EditText noteText;
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_creating_entry);
+
+        database = new Db(this);
+        database.setKey(PreferencesSettings.getCurrentCode(this).substring(0, 32));
+
+        resourceText = findViewById(R.id.resourceText);
+        loginText = findViewById(R.id.loginText);
+        passwordText = findViewById(R.id.passwordText);
+        noteText = findViewById(R.id.noteText);
+
+        passwordText.setTransformationMethod(PasswordTransformationMethod.getInstance());
+
+        CheckBox checkBox = findViewById(R.id.checkBox);
+        checkBox.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                if (isChecked) {
+                    passwordText.setTransformationMethod(PasswordTransformationMethod.getInstance());
+                }
+                else {
+                    passwordText.setTransformationMethod(HideReturnsTransformationMethod.getInstance());
+                }
+            }
+        });
+
+        Button copePassButton = findViewById(R.id.copyPassBtn2);
+        copePassButton.setOnClickListener(new View.OnClickListener()
+        {
+            @Override
+            public void onClick(View v) {
+
+                //passwordText.setTransformationMethod(HideReturnsTransformationMethod.getInstance());
+                String srcText = passwordText.getText().toString();
+                //passwordText.setTransformationMethod(PasswordTransformationMethod.getInstance());
+
+                Object clipboardService = getSystemService(CLIPBOARD_SERVICE);
+                final ClipboardManager clipboardManager = (ClipboardManager)clipboardService;
+                // Create a new ClipData.
+                ClipData clipData = ClipData.newPlainText("Source Text", srcText);
+                // Set it as primary clip data to copy text to system clipboard.
+                clipboardManager.setPrimaryClip(clipData);
+                // Popup a snackbar.
+                Snackbar snackbar = Snackbar.make(v, "Source text has been copied to system clipboard.", Snackbar.LENGTH_LONG);
+                snackbar.show();
+
+            }
+        });
+
+        Button saveButton = findViewById(R.id.saveButton);
+        saveButton.setOnClickListener(new View.OnClickListener()
+        {
+            @Override
+            public void onClick(View v) {
+                long result = database.createItem(
+                        resourceText.getText().toString(),
+                        loginText.getText().toString(),
+                        passwordText.getText().toString(),
+                        noteText.getText().toString()
+                );
+                if(result < 0) {
+                    Toast.makeText(CreatingEntryActivity.this, "[-] createItem returned -1", Toast.LENGTH_SHORT).show();
+                }
+
+                database.close();
+                startWorkActivity();
+            }
+        });
+
+        Button cancelButton = findViewById(R.id.cancelButton);
+        cancelButton.setOnClickListener(new View.OnClickListener()
+        {
+            @Override
+            public void onClick(View v) {
+                database.close();
+                startWorkActivity();
+            }
+        });
+    }
+
+    void startWorkActivity()
+    {
+        Intent intent = new Intent(this, WorkActivity.class);
+        finish();
+        intent.putExtra("password", "not_changed");
+        startActivity(intent);
+    }
+}
+
+
+
+
+// ============================= //
+
+// ========== CryptoProvider.java ========== //
+
+package com.example.a1.mobiletech4;
+
+import android.util.Base64;
+import java.security.InvalidAlgorithmParameterException;
+import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
+import javax.crypto.BadPaddingException;
+import javax.crypto.Cipher;
+import javax.crypto.IllegalBlockSizeException;
+import javax.crypto.NoSuchPaddingException;
+import javax.crypto.spec.SecretKeySpec;
+import javax.crypto.spec.IvParameterSpec;
+
+public class CryptoProvider {
+    public String encryptMessage(String message, String key)
+            throws InvalidKeyException, NoSuchPaddingException, NoSuchAlgorithmException,
+            BadPaddingException, IllegalBlockSizeException, InvalidAlgorithmParameterException {
+        String IV = "!a3edr45!a3edr45"; // Ensure IV is 16 bytes for AES
+        final byte[] keyBytes = key.getBytes();
+        final byte[] messageBytes = message.getBytes();
+        SecretKeySpec secretKeySpec = new SecretKeySpec(keyBytes, "AES");
+        Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
+        cipher.init(Cipher.ENCRYPT_MODE, secretKeySpec, new IvParameterSpec(IV.getBytes()));
+        final byte[] resultBytes = cipher.doFinal(messageBytes);
+        return Base64.encodeToString(resultBytes, Base64.DEFAULT);
+    }
+
+    public String decryptMessage(String message, String key)
+            throws InvalidKeyException, NoSuchPaddingException, NoSuchAlgorithmException,
+            BadPaddingException, IllegalBlockSizeException, InvalidAlgorithmParameterException {
+        String IV = "!a3edr45!a3edr45"; // Ensure IV is 16 bytes for AES
+        final byte[] keyBytes = key.getBytes();
+        final byte[] encryptedBytes = Base64.decode(message, Base64.DEFAULT);
+        SecretKeySpec secretKeySpec = new SecretKeySpec(keyBytes, "AES");
+        Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
+        cipher.init(Cipher.DECRYPT_MODE, secretKeySpec, new IvParameterSpec(IV.getBytes()));
+        final byte[] resultBytes = cipher.doFinal(encryptedBytes);
+        return new String(resultBytes);
+    }
+}
+
+
+// ============================= //
+
+// ========== Db.java ========== //
+
+package com.example.a1.mobiletech4;
+
+import android.content.ContentValues;
+import android.content.Context;
+import android.database.Cursor;
+import android.database.sqlite.SQLiteDatabase;
+import android.widget.Toast;
+
+public class Db {
+    DbHelper dbHelper;
+    Context context;
+    Cursor cursor;
+    SQLiteDatabase database;
+
+    String key;
+    String[] resourcesList;
+
+    public Db(Context context) {
+        this.context = context;
+        dbHelper = new DbHelper(context);
+        database = dbHelper.getWritableDatabase();
+    }
+
+    public void setKey(String key_) {
+        key = new String(key_);
+    }
+
+    public int getItemCount() {
+        cursor = database.query(dbHelper.TABLE_NAME, null, null, null, null, null, null);
+        int itemCount = cursor.getCount();
+        cursor.close();
+
+        return itemCount;
+    }
+
+    public String getItemInfoByResourceName(String resourceName, String columnName) {
+
+        cursor = database.query(dbHelper.TABLE_NAME, null,
+                dbHelper.KEY_RESOURCE + " = ?",
+                new String[] {encrypt(resourceName)},
+                null, null, null);
+
+        cursor.moveToFirst();
+        int columnIndex = cursor.getColumnIndex(columnName);
+        return decrypt(cursor.getString(columnIndex));
+    }
+
+    public long createItem(String resourceName, String login, String password, String note) {
+
+        if(resourceName.length() == 0)
+            return 0;
+
+        ContentValues cv = new ContentValues();
+        cv.put(dbHelper.KEY_RESOURCE, encrypt(resourceName));
+        cv.put(dbHelper.KEY_LOGIN, encrypt(login));
+        cv.put(dbHelper.KEY_PASSWORD, encrypt(password));
+        cv.put(dbHelper.KEY_NOTE, encrypt(note));
+
+        return database.insert(dbHelper.TABLE_NAME, null, cv);
+    }
+
+    public void deleteItem(String resourceName) {
+        database.delete(
+                dbHelper.TABLE_NAME,
+                dbHelper.KEY_RESOURCE + " = ?",
+                new String[] {encrypt(resourceName)});
+    }
+
+    public void updateResource(String resourceName, String newResource){
+        ContentValues cv = new ContentValues();
+        cv.put(DbHelper.KEY_RESOURCE, encrypt(newResource));
+        String[] args = new String[]{encrypt(resourceName)};
+        database.update(DbHelper.TABLE_NAME, cv, "resource = ?", args);
+    }
+
+    public void updateLogin(String resourceName, String newLogin){
+        ContentValues cv = new ContentValues();
+        cv.put(DbHelper.KEY_LOGIN, encrypt(newLogin));
+        String[] args = new String[]{encrypt(resourceName)};
+        database.update(DbHelper.TABLE_NAME, cv, "resource = ?", args);
+    }
+
+    public void updatePassword(String resourceName, String newPassword){
+        ContentValues cv = new ContentValues();
+        cv.put(DbHelper.KEY_PASSWORD, encrypt(newPassword));
+        String[] args = new String[]{encrypt(resourceName)};
+        database.update(DbHelper.TABLE_NAME, cv, "resource = ?", args);
+    }
+
+    public void updateNote(String resourceName, String newNote){
+        ContentValues cv = new ContentValues();
+        cv.put(DbHelper.KEY_NOTE, encrypt(newNote));
+        String[] args = new String[]{encrypt(resourceName)};
+        database.update(DbHelper.TABLE_NAME, cv, "resource = ?", args);
+    }
+
+    public String[] getAllResources() {
+        resourcesList = new String[this.getItemCount()];
+        cursor = database.query(dbHelper.TABLE_NAME, null, null, null, null, null, null);
+        if (cursor.getCount() > 0) {
+            cursor.moveToFirst();
+            int nameColInd = cursor.getColumnIndex(dbHelper.KEY_RESOURCE);
+
+            int i = 0;
+            do {
+                String resourceName = decrypt(cursor.getString(nameColInd));
+                resourcesList[i] = resourceName;
+                i++;
+            } while (cursor.moveToNext());
+        }
+
+        cursor.close();
+        return resourcesList;
+    }
+
+    public void close() {
+        database.close();
+        dbHelper.close();
+    }
+
+    String encrypt(String openedText) {
+
+        CryptoProvider cp = new CryptoProvider();
+        String cipherText = "";
+
+        try {
+            cipherText = cp.encryptMessage(openedText, key);
+        }
+        catch (Exception e) {
+            Toast.makeText(this.context, "encryptMessage failed", Toast.LENGTH_SHORT).show();
+        }
+
+        return cipherText;
+    }
+
+    String decrypt(String cipherText) {
+
+        CryptoProvider cp = new CryptoProvider();
+        String openedText = "";
+
+        try {
+            openedText = cp.decryptMessage(cipherText, key);
+        }
+        catch (Exception e) {
+            Toast.makeText(this.context, "decryptMessage failed", Toast.LENGTH_SHORT).show();
+        }
+
+        return openedText;
+    }
+}
+
+
+// ============================= //
+
+// ========== DbHelper.java ========== //
+
+package com.example.a1.mobiletech4;
+
+import android.content.Context;
+import android.content.ContentValues;
+
+import android.database.sqlite.SQLiteDatabase;
+import android.database.sqlite.SQLiteOpenHelper;
+
+
+public class DbHelper extends SQLiteOpenHelper {
+
+    private static final String DATABASE_NAME = "urlsDB";
+    public static final String TABLE_NAME = "urls";
+
+    public static final String KEY_ID = "_id";
+    public static final String KEY_RESOURCE = "resource";
+    public static final String KEY_LOGIN = "login";
+    public static final String KEY_PASSWORD = "password";
+    public static final String KEY_NOTE = "note";
+
+    private static final int DATABASE_VERSION = 1;
+
+    public DbHelper(Context context){
+        super(context, DATABASE_NAME, null, DATABASE_VERSION);
+    }
+
+    public void onCreate(SQLiteDatabase db) {
+
+        db.execSQL("CREATE TABLE " + TABLE_NAME + " ("
+                + KEY_ID + " INTEGER PRIMARY KEY AUTOINCREMENT, "
+                + KEY_RESOURCE + " TEXT, "
+                + KEY_LOGIN + " TEXT, "
+                + KEY_PASSWORD + " TEXT, "
+                + KEY_NOTE + " TEXT);");
+    }
+
+    @Override
+    public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
+        db.execSQL("DROP TABLE IF EXISTS " + TABLE_NAME);
+        this.onCreate(db);
+    }
+
+}
+
+
+// ============================= //
+
+// ========== EnterPassActivity.java ========== //
+
+package com.example.a1.mobiletech4;
+
+import android.content.Intent;
+import android.os.Bundle;
+import android.text.method.HideReturnsTransformationMethod;
+import android.text.method.PasswordTransformationMethod;
+import android.view.View;
+import android.widget.Button;
+import android.widget.CheckBox;
+import android.widget.CompoundButton;
+import android.widget.EditText;
+
+import androidx.appcompat.app.AppCompatActivity;
+
+public class EnterPassActivity extends AppCompatActivity {
+
+
+    EditText passwordText;
+    String passwordStatus;
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_enter_pass);
+
+        Bundle arguments = getIntent().getExtras();
+        passwordStatus = new String(arguments.get("password").toString());
+
+        passwordText = findViewById(R.id.createPassEnterPass2);
+        passwordText.setTransformationMethod(PasswordTransformationMethod.getInstance());
+
+
+        CheckBox checkBox = findViewById(R.id.createPassTick2);
+        checkBox.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                if (isChecked) {
+                    passwordText.setTransformationMethod(PasswordTransformationMethod.getInstance());
+                } else {
+                    passwordText.setTransformationMethod(HideReturnsTransformationMethod.getInstance());
+                }
+            }
+        });
+
+
+        Button acceptButton = findViewById(R.id.createPassBtn2);
+        acceptButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (checkPass() == 1) {
+                    startAnotherActivity();
+                }
+            }
+        });
+
+    }
+
+    private void startAnotherActivity() {
+        Intent intent = new Intent(this, WorkActivity.class);
+        finish();
+        intent.putExtra("password", passwordStatus);
+        startActivity(intent);
+    }
+
+    int checkPass() {
+        String enteredPass = PreferencesSettings.md5(passwordText.getText().toString());
+        String defaultPass = PreferencesSettings.getCurrentCode(this);
+
+        if (enteredPass.equals(defaultPass))
+        {
+            return 1;
+        }
+        return 0;
+        }
+}
+
+
+// ============================= //
+
+// ========== ExportDataActivity.java ========== //
+
+package com.example.a1.mobiletech4;
+
+import android.Manifest;
+import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.os.Bundle;
+import android.os.Environment;
+import android.view.View;
+import android.widget.Button;
+import android.widget.EditText;
+import android.widget.Toast;
+
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
+
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+
+public class ExportDataActivity extends AppCompatActivity {
+    private static final int REQUEST_CODE = 1;
+    String key;
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_export_data);
+
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+            // Запрос разрешений
+            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, REQUEST_CODE);
+        }
+        // check access to SD
+        if (!Environment.getExternalStorageState().equals(Environment.MEDIA_MOUNTED)) {
+            Toast.makeText(this, "SD is not available", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        // creating folder if it does not exist
+        checkDatabaseFolder();
+
+        key = PreferencesSettings.getCurrentCode(this).substring(0, 32);
+
+        Button exportButton = findViewById(R.id.exportToFileButton);
+        exportButton.setOnClickListener(new View.OnClickListener()
+        {
+            @Override
+            public void onClick(View v) {
+                String filename = ((EditText)findViewById(R.id.filenameToExport)).getText().toString();
+                exportDatabaseToFile(filename);
+                startWorkActivity();
+            }
+        });
+
+        Button cancelButton = findViewById(R.id.cancelButton4);
+        cancelButton.setOnClickListener(new View.OnClickListener()
+        {
+            @Override
+            public void onClick(View v) {
+                startWorkActivity();
+            }
+        });
+    }
+
+    void exportDatabaseToFile(String filename) {
+        File databaseFile = new File(Environment.getExternalStorageDirectory() + "/AppDatabases/", filename);
+        BufferedWriter bw;
+
+        try {
+            bw = new BufferedWriter(new FileWriter(databaseFile));
+        }
+        catch(IOException e) {
+            Toast.makeText(this, "FileWriter() failed", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        Db database = new Db(this);
+        database.setKey(key);
+
+        String[] resources = database.getAllResources();
+
+        for(int i = 0; i < database.getItemCount(); i++) {
+            writeEntryToFile(resources[i], bw, database);
+        }
+
+        database.close();
+
+        try {
+            bw.close();
+        }
+        catch(IOException e) {
+            Toast.makeText(this, "bw.close() failed", Toast.LENGTH_SHORT).show();
+            return;
+        }
+    }
+
+    void writeEntryToFile(String resource, BufferedWriter bw, Db database) {
+
+        String login = database.getItemInfoByResourceName(resource, DbHelper.KEY_LOGIN);
+        String password = database.getItemInfoByResourceName(resource, DbHelper.KEY_PASSWORD);
+        String note = database.getItemInfoByResourceName(resource, DbHelper.KEY_NOTE);
+
+        try {
+            bw.write(encrypt(resource) + " " +
+                    encrypt(login) + " " +
+                    encrypt(password) + " " +
+                    encrypt(note) + '\n');
+        }
+        catch(IOException e) {
+            Toast.makeText(this, "bw.write() failed", Toast.LENGTH_SHORT).show();
+            return;
+        }
+    }
+
+    void startWorkActivity() {
+        Intent intent = new Intent(this, WorkActivity.class);
+        finish();
+        intent.putExtra("password", "not_changed");
+        startActivity(intent);
+    }
+
+    void checkDatabaseFolder() {
+        File databaseFolder = new File(Environment.getExternalStorageDirectory() + "/AppDatabases/");
+        if(!databaseFolder.exists())
+            databaseFolder.mkdirs();
+    }
+
+    String encrypt(String openedText) {
+
+        CryptoProvider cp = new CryptoProvider();
+        String cipherText = "";
+
+        try {
+            cipherText = cp.encryptMessage(openedText, key);
+        }
+        catch (Exception e) {
+            Toast.makeText(this, "encryptMessage failed", Toast.LENGTH_SHORT).show();
+        }
+
+        return cipherText.substring(0, cipherText.length() - 1);
+    }
+}
+
+
+// ============================= //
+
+// ========== ImportDataActivity.java ========== //
+
+package com.example.a1.mobiletech4;
+
+import android.Manifest;
+import android.content.ClipData;
+import android.content.ClipboardManager;
+import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.os.Bundle;
+import android.os.Environment;
+import android.text.method.HideReturnsTransformationMethod;
+import android.text.method.PasswordTransformationMethod;
+import android.view.View;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
+import android.widget.Button;
+import android.widget.CheckBox;
+import android.widget.CompoundButton;
+import android.widget.EditText;
+import android.widget.ListView;
+import android.widget.Toast;
+
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
+
+import com.google.android.material.snackbar.Snackbar;
+
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
+import java.io.IOException;
+public class ImportDataActivity extends AppCompatActivity {
+    private static final int REQUEST_CODE = 1;
+    String checkedFile;
+    String[] fileList;
+    ListView listView;
+    String key;
+    EditText passwordText;
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_import_data);
+
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+            // Запрос разрешений
+            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, REQUEST_CODE);
+        }
+        // check access to SD
+        if (!Environment.getExternalStorageState().equals(Environment.MEDIA_MOUNTED)) {
+            Toast.makeText(this, "SD is not available", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        // creating folder if it does not exist
+        checkDatabaseFolder();
+
+        passwordText = findViewById(R.id.createPassEnterPass3);
+
+        passwordText.setTransformationMethod(PasswordTransformationMethod.getInstance());
+
+        CheckBox checkBox = findViewById(R.id.checkBox3);
+        checkBox.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                if (isChecked) {
+                    passwordText.setTransformationMethod(PasswordTransformationMethod.getInstance());
+                }
+                else {
+                    passwordText.setTransformationMethod(HideReturnsTransformationMethod.getInstance());
+                }
+            }
+        });
+
+        Button copePassButton = findViewById(R.id.copyPassBtn4);
+        copePassButton.setOnClickListener(new View.OnClickListener()
+        {
+            @Override
+            public void onClick(View v) {
+
+
+                //passwordText.setTransformationMethod(HideReturnsTransformationMethod.getInstance());
+
+                //String srcText = passwordText.getText().toString();
+                String srcText = passwordText.getText().toString();
+                //passwordText.setTransformationMethod(PasswordTransformationMethod.getInstance());
+
+                Object clipboardService = getSystemService(CLIPBOARD_SERVICE);
+                final ClipboardManager clipboardManager = (ClipboardManager)clipboardService;
+                // Create a new ClipData.
+                ClipData clipData = ClipData.newPlainText("Source Text", srcText);
+                // Set it as primary clip data to copy text to system clipboard.
+                clipboardManager.setPrimaryClip(clipData);
+                // Popup a snackbar.
+                Snackbar snackbar = Snackbar.make(v, "Source text has been copied to system clipboard.", Snackbar.LENGTH_LONG);
+                snackbar.show();
+
+            }
+        });
+
+
+
+        // key = PreferencesSettings.getCurrentCode(this).substring(0, 32);
+        //String qwe = PreferencesSettings.getCurrentCode(this).substring(0, 32);
+        checkedFile = new String();
+
+        // getting file list from AppDatabases folder
+        fileList = getFileListFromFolder();
+
+        listView = findViewById(R.id.fileListForImport);
+        listView.setChoiceMode(listView.CHOICE_MODE_SINGLE);
+
+        listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            @Override
+            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+                checkedFile = fileList[listView.getCheckedItemPosition()];
+            }
+        });
+
+        ArrayAdapter<String> adapter = new ArrayAdapter<>(this,
+                android.R.layout.simple_list_item_single_choice, fileList);
+        listView.setAdapter(adapter);
+
+        Button importButton = findViewById(R.id.importFromFileButton);
+        importButton.setOnClickListener(new View.OnClickListener()
+        {
+            @Override
+            public void onClick(View v) {
+
+                if (checkedFile.length() == 0) {
+                    Toast.makeText(ImportDataActivity.this, "No resources selected", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                //key = PreferencesSettings.md5(passwordText.getText().toString());
+                importDatabaseFromFile(checkedFile);
+                startWorkActivity();
+            }
+        });
+
+        Button cancelButton = findViewById(R.id.cancelButton3);
+        cancelButton.setOnClickListener(new View.OnClickListener()
+        {
+            @Override
+            public void onClick(View v) {
+                startWorkActivity();
+            }
+        });
+    }
+
+    void importDatabaseFromFile(String filename) {
+        File databaseFile = new File(Environment.getExternalStorageDirectory() + "/AppDatabases/", filename);
+        BufferedReader br;
+
+        try {
+            br = new BufferedReader(new FileReader(databaseFile));
+        }
+        catch (IOException e) {
+            Toast.makeText(this, "FileReader() failed", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        Db database = new Db(this);
+        key = PreferencesSettings.getCurrentCode(this).substring(0, 32);
+        database.setKey(key);
+
+        String[] resources = database.getAllResources();
+        int N = database.getItemCount();
+        // deletion of all items from database
+        for(int i = 0; i < N; i++) {
+            database.deleteItem(resources[i]);
+        }
+
+        String line;
+
+        try {
+            while((line = br.readLine()) != null) {
+
+                String[] parameters = line.split(" ");
+                if(parameters.length < 4) {
+                    continue;
+                }
+
+                key = PreferencesSettings.md5(passwordText.getText().toString());
+                database.setKey(key);
+
+                String resource = decrypt(parameters[0]);
+                String login = decrypt(parameters[1]);
+                String password = decrypt(parameters[2]);
+                String note = decrypt(parameters[3]);
+
+                key = PreferencesSettings.getCurrentCode(this).substring(0, 32);
+                database.setKey(key);
+                database.createItem(resource, login, password, note);
+            }
+        }
+        catch(IOException e) {
+            Toast.makeText(this, "readLine() failed", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        database.close();
+
+        try {
+            br.close();
+        }
+        catch(IOException e) {
+            Toast.makeText(this, "br.close() failed", Toast.LENGTH_SHORT).show();
+            return;
+        }
+    }
+
+    String[] getFileListFromFolder() {
+        File sdCardRoot = Environment.getExternalStorageDirectory();
+        File yourDir = new File(sdCardRoot, "AppDatabases");
+        File[] filesArray = yourDir.listFiles();
+        String[] list = new String[filesArray.length];
+
+        for (int i = 0; i < filesArray.length; i++) {
+            list[i] = filesArray[i].getName();
+        }
+
+        return list;
+    }
+
+    void startWorkActivity() {
+        Intent intent = new Intent(this, WorkActivity.class);
+        finish();
+        intent.putExtra("password", "not_changed");
+        startActivity(intent);
+    }
+
+    void checkDatabaseFolder() {
+        File databaseFolder = new File(Environment.getExternalStorageDirectory() + "/AppDatabases/");
+        if(!databaseFolder.exists())
+            databaseFolder.mkdirs();
+    }
+
+    String decrypt(String cipherText) {
+
+        CryptoProvider cp = new CryptoProvider();
+        String openedText = "";
+
+        try {
+            openedText = cp.decryptMessage(cipherText, key);
+        }
+        catch (Exception e) {
+            Toast.makeText(this, "decryptMessage failed", Toast.LENGTH_SHORT).show();
+        }
+
+        return openedText;
+    }
+
+}
+
+
+// ============================= //
+
+// ========== MainActivity.java ========== //
+
+package com.example.a1.mobiletech4;
+
+import android.content.Intent;
+import android.os.Bundle;
+
+import androidx.appcompat.app.AppCompatActivity;
+
+public class MainActivity extends AppCompatActivity {
+
+    private String passwordStatus;
+
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_main);
+        passwordStatus = new String("changed");
+
+        String code = PreferencesSettings.getCurrentCode(this);
+
+        // if pass exist
+        if(code.length() > 0)
+        {
+            startEnterPassActivity();
+        }
+        else
+        {
+            passwordStatus = "not_changed";
+            startCreatePassActivity();
+        }
+        //showLockScreenFragment();
+    }
+
+    private void startCreatePassActivity() {
+        Intent intent = new Intent(this, CreatePassActivity.class);
+        finish();
+        startActivity(intent);
+    }
+
+    private void startEnterPassActivity() {
+        Intent intent = new Intent(this, EnterPassActivity.class);
+        finish();
+        intent.putExtra("password", passwordStatus);
+        startActivity(intent);
+    }
+
+}
+
+
+// ============================= //
+
+// ========== PreferencesSettings.java ========== //
+
+package com.example.a1.mobiletech4;
+
+import android.content.Context;
+import android.content.SharedPreferences;
+
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+
+public class PreferencesSettings {
+
+    private static final String CURRENT_PREF_FILE = "settings_pref";
+    private static final String PREVIOUS_PREF_FILE = "settings_pref_previous";
+
+    /*
+    static void saveToPref(Context context, String str) {
+        SharedPreferences sharedPref = context.getSharedPreferences(CURRENT_PREF_FILE, Context.MODE_PRIVATE);
+        SharedPreferences.Editor editor = sharedPref.edit();
+        editor.putString("code", str);
+        editor.commit();
+    }
+    */
+
+    static void saveToPref(Context context, String str) {
+        SharedPreferences.Editor editor;
+        SharedPreferences sharedPref = context.getSharedPreferences(CURRENT_PREF_FILE, Context.MODE_PRIVATE);
+        boolean hasVisited = sharedPref.getBoolean("hasVisited", false);
+
+        // if the first programm starting
+        if (!hasVisited) {
+            editor = sharedPref.edit();
+            editor.putBoolean("hasVisited", true);
+            editor.commit();
+        } else {
+            sharedPref = context.getSharedPreferences(PREVIOUS_PREF_FILE, Context.MODE_PRIVATE);
+            editor = sharedPref.edit();
+            editor.putString("code", getCurrentCode(context));
+            editor.putBoolean("hasVisited", true);
+            editor.commit();
+        }
+
+        sharedPref = context.getSharedPreferences(CURRENT_PREF_FILE, Context.MODE_PRIVATE);
+        editor = sharedPref.edit();
+        editor.putString("code", str);
+        editor.commit();
+    }
+
+    static String getCurrentCode(Context context) {
+        SharedPreferences sharedPref = context.getSharedPreferences(CURRENT_PREF_FILE, Context.MODE_PRIVATE);
+        String defaultValue = "";
+        return sharedPref.getString("code", defaultValue);
+    }
+
+    static String getPreviousCode(Context context) {
+        SharedPreferences sharedPref = context.getSharedPreferences(PREVIOUS_PREF_FILE, Context.MODE_PRIVATE);
+        String defaultValue = "";
+
+        boolean hasVisitedCurrent = sharedPref.getBoolean("hasVisited", false);
+        if(!hasVisitedCurrent) {
+            return new String("");
+        }
+
+        return sharedPref.getString("code", defaultValue);
+    }
+
+    public static final String md5(final String s) {
+        final String MD5 = "MD5";
+        try {
+            // Create MD5 Hash
+            MessageDigest digest = java.security.MessageDigest
+                    .getInstance(MD5);
+            digest.update(s.getBytes());
+            byte messageDigest[] = digest.digest();
+
+            // Create Hex String
+            StringBuilder hexString = new StringBuilder();
+            for (byte aMessageDigest : messageDigest) {
+                String h = Integer.toHexString(0xFF & aMessageDigest);
+                while (h.length() < 2)
+                    h = "0" + h;
+                hexString.append(h);
+            }
+            return hexString.toString();
+
+        } catch (NoSuchAlgorithmException e) {
+            e.printStackTrace();
+        }
+        return "";
+    }
+
+
+    static int deleteCode(Context context)
+    {
+        SharedPreferences sharedPref = context.getSharedPreferences(CURRENT_PREF_FILE, Context.MODE_PRIVATE);
+        SharedPreferences.Editor editor = sharedPref.edit();
+        editor.clear();
+        editor.commit();
+        return 1;
+    }
+
+    static void saveOldCode(Context context, String oldCode)
+    {
+        SharedPreferences.Editor editor;
+        SharedPreferences sharedPref;
+
+        sharedPref = context.getSharedPreferences(CURRENT_PREF_FILE, Context.MODE_PRIVATE);
+        editor = sharedPref.edit();
+        editor.putString("code_old", oldCode);
+        editor.commit();
+    }
+
+    static void deleteOldCode(Context context)
+    {
+        SharedPreferences sharedPref = context.getSharedPreferences(CURRENT_PREF_FILE, Context.MODE_PRIVATE);
+        SharedPreferences.Editor editor = sharedPref.edit();
+        editor.remove("code_old");
+        editor.commit();
+    }
+
+    static String getOldCode(Context context) {
+        SharedPreferences sharedPref = context.getSharedPreferences(CURRENT_PREF_FILE, Context.MODE_PRIVATE);
+        String defaultValue = "";
+        return sharedPref.getString("code_old", defaultValue);
+    }
+}
+
+
+// ============================= //
+
+// ========== WorkActivity.java ========== //
+
+package com.example.a1.mobiletech4;
+
+import android.content.ClipData;
+import android.content.ClipboardManager;
+import android.content.Intent;
+import android.os.Bundle;
+import android.text.method.HideReturnsTransformationMethod;
+import android.text.method.PasswordTransformationMethod;
+import android.view.View;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
+import android.widget.Button;
+import android.widget.CheckBox;
+import android.widget.CompoundButton;
+import android.widget.EditText;
+import android.widget.ListView;
+import android.widget.Toast;
+
+import androidx.appcompat.app.AppCompatActivity;
+
+import com.google.android.material.snackbar.Snackbar;
+
+public class WorkActivity extends AppCompatActivity {
+
+    String resources[];
+    String checkedResource;
+    ListView listView;
+    EditText passwordText;
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_work);
+
+        checkedResource = new String();
+
+        listView = findViewById(R.id.resourceList);
+        listView.setChoiceMode(listView.CHOICE_MODE_SINGLE);
+
+        // getting string from MainActivity
+        Bundle arguments = getIntent().getExtras();
+        String passwordStatus = new String(arguments.get("password").toString());
+
+        String currentCode = new String(PreferencesSettings.getCurrentCode(this));
+        String previousCode = new String(PreferencesSettings.getPreviousCode(this));
+
+        String oldCode = PreferencesSettings.getOldCode(this);
+        if(oldCode.length() > 0) {
+            PreferencesSettings.deleteOldCode(this);
+            recryptAllEntries(oldCode);
+        }
+
+        refreshResourcesList();
+
+        listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            @Override
+            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+                checkedResource = resources[listView.getCheckedItemPosition()];
+            }
+        });
+
+        passwordText = findViewById(R.id.createPassEnterPass4);
+        passwordText.setTransformationMethod(PasswordTransformationMethod.getInstance());
+
+        CheckBox checkBox = findViewById(R.id.checkBox2);
+        checkBox.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                if (isChecked) {
+                    passwordText.setTransformationMethod(PasswordTransformationMethod.getInstance());
+                }
+                else {
+                    passwordText.setTransformationMethod(HideReturnsTransformationMethod.getInstance());
+                }
+            }
+        });
+
+        Button copePassButton = findViewById(R.id.copyPassBtn3);
+        copePassButton.setOnClickListener(new View.OnClickListener()
+        {
+            @Override
+            public void onClick(View v) {
+
+                //passwordText.setTransformationMethod(HideReturnsTransformationMethod.getInstance());
+                String srcText = passwordText.getText().toString();
+                //passwordText.setTransformationMethod(PasswordTransformationMethod.getInstance());
+
+                Object clipboardService = getSystemService(CLIPBOARD_SERVICE);
+                final ClipboardManager clipboardManager = (ClipboardManager)clipboardService;
+                // Create a new ClipData.
+                ClipData clipData = ClipData.newPlainText("Source Text", srcText);
+                // Set it as primary clip data to copy text to system clipboard.
+                clipboardManager.setPrimaryClip(clipData);
+                // Popup a snackbar.
+                Snackbar snackbar = Snackbar.make(v, "Source text has been copied to system clipboard.", Snackbar.LENGTH_LONG);
+                snackbar.show();
+
+            }
+        });
+
+
+        Button addButton = findViewById(R.id.addButton);
+        addButton.setOnClickListener(new View.OnClickListener()
+        {
+            @Override
+            public void onClick(View v)
+            {
+                startCreatingEntryActivity();
+            }
+        });
+
+        Button changeButton = findViewById(R.id.changeButton);
+        changeButton.setOnClickListener(new View.OnClickListener()
+        {
+            @Override
+            public void onClick(View v)
+            {
+                if (checkedResource.length() == 0) {
+                    Toast.makeText(WorkActivity.this, "No resources selected", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+
+                startChangingEntryActivity();
+            }
+        });
+
+        Button deleteButton = findViewById(R.id.deleteButton);
+        deleteButton.setOnClickListener(new View.OnClickListener()
+        {
+            @Override
+            public void onClick(View v)
+            {
+                if (checkedResource.length() == 0) {
+                    Toast.makeText(WorkActivity.this, "No resources selected", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+
+                deleteDatabaseElement(checkedResource);
+                refreshResourcesList();
+            }
+        });
+
+
+
+        Button changePasswordButton = findViewById(R.id.changePasswordButton);
+        changePasswordButton.setOnClickListener(new View.OnClickListener()
+        {
+            @Override
+            public void onClick(View v)
+            {
+                String oldPass = PreferencesSettings.md5(passwordText.getText().toString());
+                if(checkOldPassToChangeIt(oldPass))
+                {
+                    deleteCode();
+                    saveOldPassword(oldPass);
+                    startPasswordChangingActivity();
+                }
+            }
+        });
+
+
+        Button exportButton = findViewById(R.id.exportDataButton);
+        exportButton.setOnClickListener(new View.OnClickListener()
+        {
+            @Override
+            public void onClick(View v)
+            {
+                startExportDataActivity();
+            }
+        });
+
+        Button importButton = findViewById(R.id.importDataButton);
+        importButton.setOnClickListener(new View.OnClickListener()
+        {
+            @Override
+            public void onClick(View v)
+            {
+                startImportDataActivity();
+            }
+        });
+    }
+
+    void recryptAllEntries(String previousCode) {
+
+        String currentCode = PreferencesSettings.getCurrentCode(this).substring(0, 32);
+        //String previousCode = PreferencesSettings.getPreviousCode(this).substring(0, 32);
+
+        Db database = new Db(this);
+        database.setKey(previousCode);
+        int nResources = database.getItemCount();
+        String[] resources = database.getAllResources();
+
+        String[] logins = new String[nResources];
+        String[] passwords = new String[nResources] ;
+        String[] notes = new String[nResources];
+
+        for (int i = 0; i < nResources; i++) {
+            // getting info about the current resource
+            database.setKey(previousCode);
+            logins[i] = database.getItemInfoByResourceName(resources[i], DbHelper.KEY_LOGIN);
+            passwords[i] = database.getItemInfoByResourceName(resources[i], DbHelper.KEY_PASSWORD);
+            notes[i] = database.getItemInfoByResourceName(resources[i], DbHelper.KEY_NOTE);
+
+            database.deleteItem(resources[i]);
+
+            database.setKey(currentCode);
+            database.createItem(resources[i], logins[i], passwords[i], notes[i]);
+        }
+
+        database.close();
+    }
+
+    void deleteDatabaseElement(String resourceName) {
+        Db database = new Db(this);
+        database.setKey(PreferencesSettings.getCurrentCode(this).substring(0, 32));
+        database.deleteItem(resourceName);
+        database.close();
+    }
+
+    void refreshResourcesList() {
+        Db database = new Db(this);
+        database.setKey(PreferencesSettings.getCurrentCode(this).substring(0, 32));
+        resources = database.getAllResources();
+        database.close();
+        if(resources.length == 0) {
+            Toast.makeText(WorkActivity.this, "Resource list is empty", Toast.LENGTH_SHORT).show();
+        }
+        ArrayAdapter <String> adapter = new ArrayAdapter<>(this,
+                android.R.layout.simple_list_item_single_choice, resources);
+        listView.setAdapter(adapter);
+    }
+
+    void startCreatingEntryActivity()
+    {
+        Intent intent = new Intent(this, CreatingEntryActivity.class);
+        finish();
+        startActivity(intent);
+    }
+
+    void startChangingEntryActivity()
+    {
+        Intent intent = new Intent(this, ChangingEntryActivity.class);
+        finish();
+        intent.putExtra("checked_resource", checkedResource);
+        startActivity(intent);
+    }
+
+    void startImportDataActivity()
+    {
+        Intent intent = new Intent(this, ImportDataActivity.class);
+        finish();
+        startActivity(intent);
+    }
+
+    void startExportDataActivity()
+    {
+        Intent intent = new Intent(this, ExportDataActivity.class);
+        finish();
+        startActivity(intent);
+    }
+
+    void startPasswordChangingActivity()
+    {
+        Intent intent = new Intent(this, MainActivity.class);
+        finish();
+        startActivity(intent);
+    }
+
+    void deleteCode()
+    {
+        PreferencesSettings.deleteCode(this);
+    }
+
+    boolean checkOldPassToChangeIt(String oldPass)
+    {
+        if(oldPass.equals(PreferencesSettings.getCurrentCode(this).toString()))
+        {
+            return true;
+        }
+        return false;
+    }
+
+    void saveOldPassword(String oldPass)
+    {
+        PreferencesSettings.saveOldCode(this, oldPass);
+    }
+}
+
+
+// ============================= //
+
+
+<!-- ========== activity_changing_entry.xml ========== -->
+
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".ChangingEntryActivity">
+
+    <EditText
+        android:id="@+id/loginText"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="36dp"
+        android:layout_marginTop="20dp"
+        android:ems="10"
+        android:inputType="textPersonName"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/resourceText" />
+
+    <EditText
+        android:id="@+id/passwordText"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="36dp"
+        android:layout_marginTop="20dp"
+        android:ems="10"
+        android:inputType="textPersonName"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/loginText" />
+
+    <EditText
+        android:id="@+id/noteText"
+        android:layout_width="314dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="36dp"
+        android:layout_marginTop="24dp"
+        android:ems="10"
+        android:inputType="textPersonName"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/passwordText" />
+
+    <EditText
+        android:id="@+id/resourceText"
+        android:layout_width="216dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="36dp"
+        android:layout_marginTop="92dp"
+        android:ems="10"
+        android:inputType="textPersonName"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <Button
+        android:id="@+id/saveButton"
+        android:layout_width="120dp"
+        android:layout_height="52dp"
+        android:layout_marginEnd="35dp"
+        android:layout_marginBottom="40dp"
+        android:text="save"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toEndOf="@+id/copyPassBtn" />
+
+    <CheckBox
+        android:id="@+id/checkBox"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="228dp"
+        android:checked="true"
+        android:text="hide"
+        app:layout_constraintStart_toEndOf="@+id/passwordText"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <Button
+        android:id="@+id/cancelButton2"
+        android:layout_width="120dp"
+        android:layout_height="52dp"
+        android:layout_marginStart="36dp"
+        android:layout_marginEnd="1dp"
+        android:layout_marginBottom="40dp"
+        android:text="@android:string/cancel"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toStartOf="@+id/copyPassBtn"
+        app:layout_constraintStart_toStartOf="parent" />
+
+    <Button
+        android:id="@+id/copyPassBtn"
+        android:layout_width="72dp"
+        android:layout_height="52dp"
+        android:layout_marginStart="1dp"
+        android:layout_marginBottom="40dp"
+        android:text="@android:string/copy"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toStartOf="@+id/saveButton"
+        app:layout_constraintStart_toEndOf="@+id/cancelButton2"
+        tools:text="copy pass" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>
+
+
+<!-- ============================= -->
+
+<!-- ========== activity_create_pass.xml ========== -->
+
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/createPass_"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".CreatePassActivity">
+
+    <CheckBox
+        android:id="@+id/createPassTick"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="268dp"
+        android:layout_marginEnd="60dp"
+        android:checked="true"
+        android:text="hide"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <EditText
+        android:id="@+id/createPassEnterPass"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="40dp"
+        android:layout_marginTop="264dp"
+        android:ems="10"
+        android:hint="Enter new password"
+        android:inputType="textPersonName"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <Button
+        android:id="@+id/createPassBtn"
+        android:layout_width="120dp"
+        android:layout_height="52dp"
+        android:layout_marginEnd="132dp"
+        android:layout_marginBottom="32dp"
+        android:text="accept"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>
+
+
+<!-- ============================= -->
+
+<!-- ========== activity_creating_entry.xml ========== -->
+
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".CreatingEntryActivity">
+
+    <Button
+        android:id="@+id/copyPassBtn2"
+        android:layout_width="72dp"
+        android:layout_height="52dp"
+        android:layout_marginStart="1dp"
+        android:layout_marginBottom="40dp"
+        android:text="@android:string/copy"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toStartOf="@+id/saveButton"
+        app:layout_constraintStart_toEndOf="@+id/cancelButton2"
+        tools:text="copy pass" />
+
+    <EditText
+        android:id="@+id/resourceText"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="36dp"
+        android:layout_marginTop="88dp"
+        android:ems="10"
+        android:hint="Resource"
+        android:inputType="textPersonName"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <EditText
+        android:id="@+id/loginText"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="36dp"
+        android:layout_marginTop="12dp"
+        android:ems="10"
+        android:hint="Login"
+        android:inputType="textPersonName"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/resourceText" />
+
+    <EditText
+        android:id="@+id/noteText"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="36dp"
+        android:layout_marginTop="8dp"
+        android:ems="10"
+        android:hint="Note"
+        android:inputType="textPersonName"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/passwordText" />
+
+    <EditText
+        android:id="@+id/passwordText"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="36dp"
+        android:layout_marginTop="12dp"
+        android:ems="10"
+        android:hint="Password"
+        android:inputType="textPersonName"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/loginText" />
+
+    <Button
+        android:id="@+id/saveButton"
+        android:layout_width="120dp"
+        android:layout_height="52dp"
+        android:layout_marginTop="116dp"
+        android:layout_marginEnd="40dp"
+        android:layout_marginBottom="40dp"
+        android:text="Save"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/noteText" />
+
+    <Button
+        android:id="@+id/cancelButton"
+        android:layout_width="120dp"
+        android:layout_height="52dp"
+        android:layout_marginStart="32dp"
+        android:layout_marginTop="116dp"
+        android:layout_marginBottom="40dp"
+        android:text="cancel"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/noteText" />
+
+    <CheckBox
+        android:id="@+id/checkBox"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="12dp"
+        android:layout_marginTop="204dp"
+        android:checked="true"
+        android:text="hide"
+        app:layout_constraintStart_toEndOf="@+id/passwordText"
+        app:layout_constraintTop_toTopOf="parent" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>
+
+
+<!-- ============================= -->
+
+<!-- ========== activity_enter_pass.xml ========== -->
+
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".EnterPassActivity">
+
+    <CheckBox
+        android:id="@+id/createPassTick2"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="256dp"
+        android:layout_marginEnd="56dp"
+        android:checked="true"
+        android:text="hide"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <Button
+        android:id="@+id/createPassBtn2"
+        android:layout_width="120dp"
+        android:layout_height="52dp"
+        android:layout_marginStart="132dp"
+        android:layout_marginTop="97dp"
+        android:layout_marginEnd="132dp"
+        android:text="accept"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/createPassEnterPass2" />
+
+    <EditText
+        android:id="@+id/createPassEnterPass2"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="44dp"
+        android:layout_marginTop="248dp"
+        android:ems="10"
+        android:hint="Password"
+        android:inputType="textPersonName"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>
+
+
+<!-- ============================= -->
+
+<!-- ========== activity_export_data.xml ========== -->
+
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".ExportDataActivity">
+
+    <EditText
+        android:id="@+id/filenameToExport"
+        android:layout_width="335dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="28dp"
+        android:layout_marginTop="208dp"
+        android:ems="10"
+        android:hint="Filename"
+        android:inputType="textPersonName"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <Button
+        android:id="@+id/exportToFileButton"
+        android:layout_width="120dp"
+        android:layout_height="52dp"
+        android:layout_marginStart="100dp"
+        android:layout_marginTop="168dp"
+        android:text="export"
+        app:layout_constraintStart_toEndOf="@+id/cancelButton4"
+        app:layout_constraintTop_toBottomOf="@+id/filenameToExport" />
+
+    <Button
+        android:id="@+id/cancelButton4"
+        android:layout_width="120dp"
+        android:layout_height="52dp"
+        android:layout_marginStart="28dp"
+        android:layout_marginTop="168dp"
+        android:text="cancel"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/filenameToExport" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>
+
+
+<!-- ============================= -->
+
+<!-- ========== activity_import_data.xml ========== -->
+
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".ImportDataActivity">
+
+    <Button
+        android:id="@+id/copyPassBtn4"
+        android:layout_width="102dp"
+        android:layout_height="41dp"
+        android:layout_marginTop="4dp"
+        android:layout_marginEnd="140dp"
+        android:text="@android:string/copy"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/createPassEnterPass3"
+        tools:text="copy pass" />
+
+    <CheckBox
+        android:id="@+id/checkBox3"
+        android:layout_width="71dp"
+        android:layout_height="23dp"
+        android:layout_marginStart="42dp"
+        android:layout_marginTop="16dp"
+        android:layout_marginEnd="29dp"
+        android:checked="true"
+        android:text="Hide"
+        app:layout_constraintEnd_toStartOf="@+id/copyPassBtn4"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/createPassEnterPass3" />
+
+    <EditText
+        android:id="@+id/createPassEnterPass3"
+        android:layout_width="127dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="20dp"
+        android:layout_marginEnd="25dp"
+        android:ems="10"
+        android:hint="Password"
+        android:inputType="textPersonName"
+        app:layout_constraintEnd_toStartOf="@+id/cancelButton3"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/fileListForImport" />
+
+    <Button
+        android:id="@+id/importFromFileButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="24dp"
+        android:layout_marginTop="16dp"
+        android:text="Import"
+        app:layout_constraintStart_toEndOf="@+id/cancelButton3"
+        app:layout_constraintTop_toBottomOf="@+id/fileListForImport" />
+
+    <ListView
+        android:id="@+id/fileListForImport"
+        android:layout_width="354dp"
+        android:layout_height="365dp"
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="16dp"
+        android:layout_marginEnd="14dp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <Button
+        android:id="@+id/cancelButton3"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="25dp"
+        android:layout_marginTop="16dp"
+        android:layout_marginEnd="24dp"
+        android:text="cancel"
+        app:layout_constraintEnd_toStartOf="@+id/importFromFileButton"
+        app:layout_constraintStart_toEndOf="@+id/createPassEnterPass3"
+        app:layout_constraintTop_toBottomOf="@+id/fileListForImport" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>
+
+
+<!-- ============================= -->
+
+<!-- ========== activity_main.xml ========== -->
+
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/container_view"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".MainActivity">
+</androidx.constraintlayout.widget.ConstraintLayout>
+
+
+<!-- ============================= -->
+
+<!-- ========== activity_work.xml ========== -->
+
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".WorkActivity">
+
+    <Button
+        android:id="@+id/copyPassBtn3"
+        android:layout_width="102dp"
+        android:layout_height="41dp"
+        android:layout_marginTop="9dp"
+        android:layout_marginEnd="180dp"
+        android:text="@android:string/copy"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/changePasswordButton"
+        tools:text="copy pass" />
+
+    <EditText
+        android:id="@+id/createPassEnterPass4"
+        android:layout_width="176dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="12dp"
+        android:layout_marginTop="21dp"
+        android:layout_marginEnd="12dp"
+        android:ems="10"
+        android:hint="Enter old password"
+        android:inputType="textPersonName"
+        app:layout_constraintEnd_toStartOf="@+id/changePasswordButton"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/resourceList" />
+
+    <Button
+        android:id="@+id/addButton"
+        android:layout_width="113dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="8dp"
+        android:text="ADD"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <Button
+        android:id="@+id/changeButton"
+        android:layout_width="113dp"
+        android:layout_height="wrap_content"
+        android:layout_marginEnd="14dp"
+        android:text="change"
+        app:layout_constraintEnd_toStartOf="@+id/deleteButton"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <Button
+        android:id="@+id/deleteButton"
+        android:layout_width="113dp"
+        android:layout_height="wrap_content"
+        android:layout_marginEnd="8dp"
+        android:text="delete"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <Button
+        android:id="@+id/changePasswordButton"
+        android:layout_width="176dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="22dp"
+        android:layout_marginEnd="8dp"
+        android:text="Change pass"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/resourceList" />
+
+    <ListView
+        android:id="@+id/resourceList"
+        android:layout_width="367dp"
+        android:layout_height="273dp"
+        android:layout_marginStart="8dp"
+        android:layout_marginTop="8dp"
+        android:layout_marginEnd="9dp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/addButton" />
+
+    <Button
+        android:id="@+id/importDataButton"
+        android:layout_width="176dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="12dp"
+        android:layout_marginTop="10dp"
+        android:text="import data"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/copyPassBtn3" />
+
+    <Button
+        android:id="@+id/exportDataButton"
+        android:layout_width="176dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:layout_marginEnd="8dp"
+        android:text="export data"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/copyPassBtn3" />
+
+    <CheckBox
+        android:id="@+id/checkBox2"
+        android:layout_width="71dp"
+        android:layout_height="23dp"
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="23dp"
+        android:checked="true"
+        android:text="Hide"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/createPassEnterPass4" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>
+
+
+<!-- ============================= -->
+
+// ========== build.gradle ========== //
+
+apply plugin: 'com.android.application'
+
+android {
+    namespace "com.example.a1.mobiletech4"  // Задай свое пространство имен (совпадает с package в AndroidManifest.xml)
+    compileSdkVersion 33
+    defaultConfig {
+        applicationId "com.example.a1.mobiletech4"
+        minSdkVersion 19
+        targetSdkVersion 33
+        versionCode 1
+        versionName "1.0"
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+    }
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+}
+
+
+
+dependencies {
+    implementation fileTree(dir: 'libs', include: ['*.jar'])
+    implementation 'androidx.appcompat:appcompat:1.0.2'
+    implementation 'androidx.constraintlayout:constraintlayout:1.1.3'
+    implementation 'com.google.android.material:material:1.0.0'
+    testImplementation 'junit:junit:4.12'
+    androidTestImplementation 'androidx.test:runner:1.1.1'
+    androidTestImplementation 'androidx.test.espresso:espresso-core:3.1.1'
+    implementation 'com.github.thealeksandr:PFLockScreen-Android:1.0.0-beta3'
+    implementation 'androidx.constraintlayout:constraintlayout:2.0.4'
+
+}
+
+
+
+<!-- ============================= -->
+
+
+
+// ========== AndriodManifest.xml ========== //
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.example.a1.mobiletech4">
+
+    <!-- Разрешения для работы с внешним хранилищем -->
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+
+    <application
+        android:allowBackup="true"
+        android:icon="@mipmap/ic_launcher"
+        android:label="PWDStorage"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:theme="@style/AppTheme">
+
+        <!-- Главная активность с установленным android:exported -->
+        <activity android:name=".MainActivity"
+            android:exported="true"> <!-- Установлено в true -->
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!-- Другие активности -->
+        <activity android:name=".WorkActivity" android:exported="false" />
+        <activity android:name=".ChangingEntryActivity" android:exported="false" />
+        <activity android:name=".CreatingEntryActivity" android:exported="false" />
+        <activity android:name=".ImportDataActivity" android:exported="false" />
+        <activity android:name=".ExportDataActivity" android:exported="false" />
+        <activity android:name=".CreatePassActivity" android:exported="false" />
+        <activity android:name=".EnterPassActivity" android:exported="false" />
+
+    </application>
+
+</manifest>
+
+
+<!-- ============================= -->

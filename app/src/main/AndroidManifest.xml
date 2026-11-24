@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.example.a1.mobiletech4">
+
+    <!-- Разрешения для работы с внешним хранилищем -->
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
+
+
+    <application
+        android:allowBackup="true"
+        android:icon="@mipmap/ic_launcher"
+        android:label="PWDStorage"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:theme="@style/AppTheme">
+
+        <!-- Главная активность с установленным android:exported -->
+        <activity android:name=".MainActivity"
+            android:exported="true"> <!-- Установлено в true -->
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!-- Другие активности -->
+        <activity android:name=".WorkActivity" android:exported="false" />
+        <activity android:name=".ChangingEntryActivity" android:exported="false" />
+        <activity android:name=".CreatingEntryActivity" android:exported="false" />
+        <activity android:name=".ImportDataActivity" android:exported="false" />
+        <activity android:name=".ExportDataActivity" android:exported="false" />
+        <activity android:name=".CreatePassActivity" android:exported="false" />
+        <activity android:name=".EnterPassActivity" android:exported="false" />
+
+    </application>
+
+</manifest>
